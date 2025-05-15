@@ -1,3 +1,4 @@
+// Current code is written by chatgpt, I plan to redo it
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use config as config_rs;
@@ -145,4 +146,3 @@ fn get_current_handler() -> Result<String> {
         Err(anyhow::anyhow!("xdg-mime query failed"))
     }
 }
-
