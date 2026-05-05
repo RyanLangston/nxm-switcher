@@ -77,7 +77,7 @@ handlers = [
 ```
 
 - **`name`** — Human-readable label shown in the menu and in `status` output.
-- **`desktop`** — The `.desktop` filename that `xdg-mime` will register as the handler. The file must exist in `~/.local/share/applications/` or `/usr/share/applications/`.
+- **`desktop`** — The `.desktop` filename that `xdg-mime` will register as the handler. The file must exist in `~/.local/share/applications/`, `/usr/share/applications/`, or `/usr/local/share/applications/`.
 
 Add, remove, or rename entries to match the mod managers you have installed.
 

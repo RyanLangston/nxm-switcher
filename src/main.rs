@@ -65,16 +65,26 @@ fn get_config_path() -> Result<PathBuf> {
     let legacy_path = config_dir.join("nxm-handler/config.toml");
 
     // Migrate from the old config directory if needed
-    if !new_path.exists()
-        && legacy_path.exists()
-        && new_path.parent().is_some_and(|p| fs::create_dir_all(p).is_ok())
-        && fs::rename(&legacy_path, &new_path).is_ok()
-    {
-        eprintln!(
-            "ℹ Migrated config from {} to {}",
-            legacy_path.display(),
-            new_path.display()
-        );
+    if !new_path.exists() && legacy_path.exists() {
+        let migrated = new_path
+            .parent()
+            .is_some_and(|p| fs::create_dir_all(p).is_ok())
+            && fs::rename(&legacy_path, &new_path).is_ok();
+
+        if migrated {
+            eprintln!(
+                "ℹ Migrated config from {} to {}",
+                legacy_path.display(),
+                new_path.display()
+            );
+        } else {
+            eprintln!(
+                "⚠ Could not migrate config from {} to {}; using legacy path",
+                legacy_path.display(),
+                new_path.display()
+            );
+            return Ok(legacy_path);
+        }
     }
 
     Ok(new_path)
@@ -94,10 +104,13 @@ fn cmd_status(config_path: &Path) -> Result<()> {
 
     // Resolve the friendly name from config if available (best-effort)
     let friendly = if config_path.exists() {
-        load_config(config_path)
-            .ok()
-            .and_then(|s| s.handlers.into_iter().find(|h| h.desktop == *primary))
-            .map(|h| h.name)
+        match load_config(config_path) {
+            Ok(s) => s.handlers.into_iter().find(|h| h.desktop == *primary).map(|h| h.name),
+            Err(e) => {
+                eprintln!("⚠ Could not read config ({}): {e:#}", config_path.display());
+                None
+            }
+        }
     } else {
         None
     };
