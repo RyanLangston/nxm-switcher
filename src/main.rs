@@ -105,7 +105,11 @@ fn cmd_status(config_path: &Path) -> Result<()> {
     // Resolve the friendly name from config if available (best-effort)
     let friendly = if config_path.exists() {
         match load_config(config_path) {
-            Ok(s) => s.handlers.into_iter().find(|h| h.desktop == *primary).map(|h| h.name),
+            Ok(s) => s
+                .handlers
+                .into_iter()
+                .find(|h| h.desktop == *primary)
+                .map(|h| h.name),
             Err(e) => {
                 eprintln!("⚠ Could not read config ({}): {e:#}", config_path.display());
                 None
@@ -333,8 +337,7 @@ handlers = [
 
     #[test]
     fn test_parse_default_config() {
-        let settings: Settings =
-            toml::from_str(DEFAULT_CONFIG).expect("default config must parse");
+        let settings: Settings = toml::from_str(DEFAULT_CONFIG).expect("default config must parse");
         assert_eq!(settings.handlers.len(), 3);
     }
 
@@ -373,7 +376,10 @@ handlers = [
             .iter()
             .find(|h| h.name.eq_ignore_ascii_case("vortex"));
         assert!(found.is_some());
-        assert_eq!(found.unwrap().desktop, "vortex-steamtinkerlaunch-dl.desktop");
+        assert_eq!(
+            found.unwrap().desktop,
+            "vortex-steamtinkerlaunch-dl.desktop"
+        );
     }
 
     #[test]
@@ -466,4 +472,3 @@ handlers = [
         assert_eq!(contents, "handlers = []\n");
     }
 }
-
