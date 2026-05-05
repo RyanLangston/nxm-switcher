@@ -67,7 +67,7 @@ fn get_config_path() -> Result<PathBuf> {
     // Migrate from the old config directory if needed
     if !new_path.exists()
         && legacy_path.exists()
-        && new_path.parent().map(|p| fs::create_dir_all(p).is_ok()).unwrap_or(false)
+        && new_path.parent().is_some_and(|p| fs::create_dir_all(p).is_ok())
         && fs::rename(&legacy_path, &new_path).is_ok()
     {
         eprintln!(
@@ -103,9 +103,9 @@ fn cmd_status(config_path: &Path) -> Result<()> {
     };
 
     if let Some(name) = friendly {
-        println!("Current handler: {} ({})", name, primary);
+        println!("Current handler: {name} ({primary})");
     } else {
-        println!("Current handler: {}", primary);
+        println!("Current handler: {primary}");
     }
 
     Ok(())
@@ -229,19 +229,17 @@ fn query_current_handlers() -> Result<Vec<String>> {
                 .arg(mime)
                 .env_remove("XDG_CURRENT_DESKTOP") // prevents qtpaths dependency
                 .output()
-                .with_context(|| format!("Failed to execute xdg-mime for {}", mime))?;
+                .with_context(|| format!("Failed to execute xdg-mime for {mime}"))?;
 
             if output.status.success() {
                 Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
             } else {
                 let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
                 if stderr.is_empty() {
-                    Err(anyhow::anyhow!("xdg-mime query failed for {}", mime))
+                    Err(anyhow::anyhow!("xdg-mime query failed for {mime}"))
                 } else {
                     Err(anyhow::anyhow!(
-                        "xdg-mime query failed for {}: {}",
-                        mime,
-                        stderr
+                        "xdg-mime query failed for {mime}: {stderr}"
                     ))
                 }
             }
@@ -261,12 +259,12 @@ fn set_handler(handler: &Handler) -> Result<()> {
             .arg(mime)
             .env_remove("XDG_CURRENT_DESKTOP") // prevents qtpaths dependency
             .status()
-            .with_context(|| format!("Failed to invoke xdg-mime for {}", mime));
+            .with_context(|| format!("Failed to invoke xdg-mime for {mime}"));
 
         match result {
             Ok(s) if s.success() => {}
-            Ok(_) => errors.push(format!("xdg-mime failed to set handler for {}", mime)),
-            Err(e) => errors.push(format!("{:#}", e)),
+            Ok(_) => errors.push(format!("xdg-mime failed to set handler for {mime}")),
+            Err(e) => errors.push(format!("{e:#}")),
         }
     }
 
