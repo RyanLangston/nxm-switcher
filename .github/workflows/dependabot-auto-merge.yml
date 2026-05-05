@@ -1,8 +1,10 @@
 name: Dependabot Auto-merge
 
 on:
-  pull_request:
-    branches: ["**"]
+  workflow_run:
+    workflows: ["CI"]
+    types:
+      - completed
 
 permissions:
   contents: write
@@ -11,14 +13,19 @@ permissions:
 jobs:
   auto-merge:
     runs-on: ubuntu-latest
-    if: github.actor == 'dependabot[bot]'
+    if: >
+      github.event.workflow_run.conclusion == 'success' &&
+      startsWith(github.event.workflow_run.head_branch, 'dependabot/')
     steps:
-      - name: Fetch Dependabot metadata
-        id: metadata
-        uses: dependabot/fetch-metadata@v2
-
-      - name: Enable auto-merge for Dependabot PRs
-        run: gh pr merge --auto --squash "$PR_URL"
+      - name: Merge Dependabot PR
+        run: |
+          PR_URL=$(gh api \
+            "repos/$GITHUB_REPOSITORY/pulls?head=${{ github.event.workflow_run.head_repository.owner.login }}:${{ github.event.workflow_run.head_branch }}&state=open" \
+            --jq '.[0].html_url')
+          if [ -z "$PR_URL" ] || [ "$PR_URL" = "null" ]; then
+            echo "No open PR found for this workflow run; skipping."
+            exit 0
+          fi
+          gh pr merge --squash "$PR_URL"
         env:
-          PR_URL: ${{ github.event.pull_request.html_url }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
