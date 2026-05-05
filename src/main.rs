@@ -61,7 +61,23 @@ fn main() -> Result<()> {
 fn get_config_path() -> Result<PathBuf> {
     let config_dir = dirs::config_dir()
         .ok_or_else(|| anyhow::anyhow!("Could not determine config directory"))?;
-    Ok(config_dir.join("nxm/config.toml"))
+    let new_path = config_dir.join("nxm/config.toml");
+    let legacy_path = config_dir.join("nxm-handler/config.toml");
+
+    // Migrate from the old config directory if needed
+    if !new_path.exists()
+        && legacy_path.exists()
+        && new_path.parent().map(|p| fs::create_dir_all(p).is_ok()).unwrap_or(false)
+        && fs::rename(&legacy_path, &new_path).is_ok()
+    {
+        eprintln!(
+            "ℹ Migrated config from {} to {}",
+            legacy_path.display(),
+            new_path.display()
+        );
+    }
+
+    Ok(new_path)
 }
 
 fn cmd_status(config_path: &Path) -> Result<()> {
@@ -102,7 +118,7 @@ fn cmd_select(config_path: &Path) -> Result<()> {
 
     let current_desktop = query_current_handlers()
         .ok()
-        .map(|handlers| handlers.into_iter().next().unwrap_or_default());
+        .map(|handlers| handlers[0].clone());
 
     let options: Vec<&str> = settings.handlers.iter().map(|h| h.name.as_str()).collect();
 
@@ -218,7 +234,16 @@ fn query_current_handlers() -> Result<Vec<String>> {
             if output.status.success() {
                 Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
             } else {
-                Err(anyhow::anyhow!("xdg-mime query failed for {}", mime))
+                let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+                if stderr.is_empty() {
+                    Err(anyhow::anyhow!("xdg-mime query failed for {}", mime))
+                } else {
+                    Err(anyhow::anyhow!(
+                        "xdg-mime query failed for {}: {}",
+                        mime,
+                        stderr
+                    ))
+                }
             }
         })
         .collect()
